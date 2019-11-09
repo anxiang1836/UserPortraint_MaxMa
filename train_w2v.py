@@ -1,6 +1,3 @@
-import pandas as pd
-import jieba
-import gensim
 from gensim.models.word2vec import LineSentence
 from gensim.models import Word2Vec
 import multiprocessing
