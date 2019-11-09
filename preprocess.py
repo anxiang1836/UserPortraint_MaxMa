@@ -34,15 +34,18 @@ class PrepareData(object):
         file.close()
         self.stopwords = [word.strip() for word in stop_words_list]
 
-
-# ----------重写数据-----------------
     def read_and_rewrite(self):
+        """
+        读取原始数据并进行预处理：
+            1.统计每个人的query数量、包含空格query的数量
+            2.清洗掉每个人query中的网址、纯数字、query中的数字
+            3.用逻辑回归的方法，用tf-idf向量化表示每个的query，对数据进行缺失值填充
+
+        :return: None
+        """
         data = self._data
         # -- 每个人的queryList统计量计算 --
-
-        # 统计每个人的query数量
         data['Query_count'] = data['Query_list'].map(lambda x: len(x.split('\t')))
-        # 统计每个人的包含空格的query个数
         data['Query_has_space'] = data['Query_list'].map(self.__count_query_has_space)
         print("数据统计量计算完毕！")
 
@@ -72,36 +75,45 @@ class PrepareData(object):
         self._data = data
         print('数据补全完毕！')
 
-        # 持久化数据表
+        # -- 持久化数据表 --
         data.to_csv(self.output_csv_path, index=None, encoding='utf-8')
         return
 
-
-    # --------准备W2v训练数据---------------
+    # TODO 准备W2v训练数据
+    # 由于考虑在Query中的语料是不足以表示这个词的真正语义的，所以这里先不做了
     # def prepare_for_w2v(self):
-    #     pass
     #     return
 
-    # ----------数据清洗静态方法-------------
     @staticmethod
     def __clean_query(query_list):
+        """
+        用于Series的方法，清洗处理处理Qeury中的无关数据。
+
+        :param query_list:
+        :return:
+        """
         new_list = []
         for query in query_list.split('\t'):
-            # 删除带空格的query
+            # 删除带网址的query
             if re.match(r'https?://', query.strip()) is not None:
                 continue
             # 删除掉所有数字
             query = re.sub(r'\d', '', query.strip())
             if len(query) != 0:
-                new_list += query
+                new_list.append(query)
             # 替换所有的公式
             # TODO 找到公式替换规则（数据发现再去看）
         return '\t'.join(new_list)
 
 
-    # ----------统计空格率静态方法-----------
     @staticmethod
     def __count_query_has_space(query_list):
+        """
+        用于Series的方法，统计每个用有多少包含空格的query数量比例：包含空格的query数/总的query数。
+
+        :param query_list:
+        :return:
+        """
         count = 0
         query_list = query_list.split('\t')
         for query in query_list:
@@ -109,7 +121,6 @@ class PrepareData(object):
                 count += 1
         # 返回一个比例，即有space的query占全部总query数的比例
         return count / len(query_list)
-
 
     class __Tokenizer:
         def __init__(self, stopwords):
