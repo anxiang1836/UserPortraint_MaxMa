@@ -14,11 +14,11 @@ class PrepareData(object):
                  stop_word_path
                  ):
         """
-        :input_csv_path    : CSV表的输入路径
-        :output_csv_path   : CSV表的输出路径
-        :output_tfidf_path : tfidf-Vectorizer的持久化路径
-        :stop_word_path    : 停用词表路径
-        :output_w2v_path   : [弃用状态]
+        :param input_csv_path    : CSV表的输入路径
+        :param output_csv_path   : CSV表的输出路径
+        :param output_tfidf_path : tfidf-Vectorizer的持久化路径
+        :param stop_word_path    : 停用词表路径
+        :param output_w2v_path   : [弃用状态]
         """
         self.input_csv_path = input_csv_path
         self.output_csv_path = output_csv_path

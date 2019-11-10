@@ -3,13 +3,18 @@ import tensorflow as tf
 import jieba
 import re
 import numpy as np
+import pickle
+import time
 from gensim.models import Word2Vec
 from sklearn.model_selection import train_test_split
+from tensorflow.keras.preprocessing import sequence
+from tensorflow.data import Dataset
 
 
 class Prepare:
 
-    def __init__(self, data_path, w2vpath, max_len):
+    def __init__(self, data_path, w2vpath, output_path, max_len,
+                 word2idx=None):
         """
         :param data_path: 原始CSV的数据表路径
         :param w2vpath:  word2vec的模型路径
@@ -17,10 +22,11 @@ class Prepare:
         """
         self.data_path = data_path
         self.w2vpath = w2vpath
+        self.output_path = output_path
         self.max_len = max_len
 
         # 单词的索引
-        self._word2idx = {}
+        self._word2idx = word2idx
 
     def create_embedding_matrix(self):
         """
@@ -47,6 +53,9 @@ class Prepare:
             embedding_matrix[i + 2] = vocab_list[i][1]
 
         self._word2idx = word2idx
+        # -- 持久化Embedding层的参数 --
+        self.__dump_obj(embedding_matrix, "embedding_matrix")
+        self.__dump_obj(word2idx, "word2idx")
 
         return embedding_matrix
 
@@ -75,20 +84,39 @@ class Prepare:
 
             # 构建数据管道
             train = data.loc[data['ID'].isin(X_ID_train), :]
+            train_count = train.shape[0]
             val = data.loc[data['ID'].isin(X_ID_val), :]
+            val_count = val.shape[0]
 
-            train_ds = self.create_ds(train)
-            val_ds = self.create_ds(val)
+            train_ds = self.__create_ds(train)
+            val_ds = self.__create_ds(val)
 
             train_ds_set.append(train_ds)
             val_ds_set.append(val_ds)
 
         test = data.loc[data['ID'].isin(X_ID_test), :]
-        test_ds = self.create_ds(test)
+        test_count = test.shape[0]
+        test_ds = self.__create_ds(test)
 
-        return train_ds_set, val_ds_set, test_ds
+        self.__dump_obj(train_ds_set, 'train_ds_set')
+        self.__dump_obj(val_ds_set, 'val_ds_set')
+        self.__dump_obj(test_ds, 'test_ds')
 
-    def create_ds(self, data):
+        return train_ds_set, val_ds_set, test_ds,train_count,val_count,test_count
+
+    def __dump_obj(self, obj, name):
+        """
+        将对象持久化到硬盘
+        :param obj:待持久化的对象
+        :param name:持久化的文件名称
+        :return:
+            None
+        """
+        timestamp = time.strftime("%m%d_%H%M", time.localtime())
+        pickle.dump(obj, open(self.output_path + timestamp + '_' + name + '.pkl', 'wb'))
+        return
+
+    def __create_ds(self, data):
         """
         根据完整的数据表，创建tf的数据管道（为切分后的数据）
 
@@ -97,8 +125,8 @@ class Prepare:
             ds :  tensorflow的DataSet，算是一种数据流，很好用哦，官方推荐的数据渠道
         """
         text_data = self.__transfer(data['Query_list'])
-        text_ds = tf.data.Dataset.from_tensor_slices(text_data)
-        label_ds = tf.data.Dataset.from_tensor_slices(
+        text_ds = Dataset.from_tensor_slices(text_data)
+        label_ds = Dataset.from_tensor_slices(
             (data['Age'] - 1,
              data['Gender'] - 1,
              data['Education'] - 1))
@@ -107,6 +135,8 @@ class Prepare:
 
     def __transfer(self, query_list):
         """
+        用于转化原始数据，根据w2v的词表，转化为idx矩阵
+
         :param query_list: 是原始数据中的data["Query_list"]的那一列数据
         :return:
         """
@@ -132,7 +162,7 @@ class Prepare:
                 line_indexs.append(idx)
 
             line_indexs = np.array(line_indexs).reshape(1, len(line_indexs))
-            line_indexs = tf.keras.preprocessing.sequence.pad_sequences(line_indexs, max_len=self.max_len)
+            line_indexs = sequence.pad_sequences(line_indexs, max_len=self.max_len)
 
             train_data.append(line_indexs)
 
