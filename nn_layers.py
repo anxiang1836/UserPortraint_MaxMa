@@ -104,7 +104,8 @@ class Attention(Layer):
         else:
             # [sample,step,feature]
             pass
-        e = K.dot(x, self.W)
+        e = K.reshape(K.dot(K.reshape(x, (-1, features_dim)), K.reshape(self.W, (features_dim, 1))),
+                      (-1, step_dim))  # e = K.dot(x,self.W)
 
         if self.position != "embedding":
             # [sample,filters,step,1] -> [sample,filters,step]

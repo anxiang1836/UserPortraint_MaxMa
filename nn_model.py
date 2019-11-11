@@ -59,6 +59,6 @@ class Att_1_TextCNN(object):
         x2 = Dense(self.dense1_units, activation="relu")(concat_convs)
         output_2 = Dense(self.label_count[2], activation="softmax", name="out_Education")(x2)
 
-        model = Model(input=input_query, outputs=[output_0, output_1, output_2])
+        model = Model(inputs=input_query, outputs=[output_0, output_1, output_2])
         model.summary()
         return model

@@ -149,7 +149,7 @@ class Prepare:
             train_data.append(line_indexs)
 
         train_data = np.array(train_data)
-        train_data = train_data.reshape((train_data.shape[0], train_data.shape[1], train_data.shape[-1]))
+        train_data = train_data.reshape((train_data.shape[0], train_data.shape[-1]))
 
         return train_data
 

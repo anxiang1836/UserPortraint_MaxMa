@@ -1,7 +1,7 @@
 import pickle
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.optimizers import Adam
-
+import tensorflow as tf
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -26,25 +26,27 @@ if __name__ == "__main__":
     prepare = Prepare(**params_for_prepare)
     embedding_martix = prepare.create_embedding_matrix()
 
-    ds_set, train_count, val_count, test_count = prepare.split_dataset("Age")
-    train_ds = ds_set[0]
-    val_ds = ds_set[1]
+    # ds_set, train_count, val_count, test_count = prepare.split_dataset("Age")
+    # train_ds = ds_set[0]
+    # val_ds = ds_set[1]
 
-    # train_path = ""
-    # train_text_path = ""
-    # val_path = ""
-    # val_text_path = ""
-    # test_path = ""
-    # test_ds_path = ""
-    #
-    # train = pickle.load(open(train_path,"rb"))
-    # train_text = pickle.load(open(train_text_path,"rb"))
-    # val = pickle.load(open(val_path,"rb"))
-    # val_text = pickle.load(open(val_text_path,"rb"))
-    # test = pickle.load(open(test_path,"rb"))
-    # test_text = pickle.load(open(test_ds_path, "rb"))
-    # train_ds = prepare.create_ds(train,train_text)
-    # val_ds = prepare.create_ds(val,val_text)
+    train_path = "./prepare_data/1112_0021_train.pkl"
+    train_text_path = "./prepare_data/1112_0021_train_text_data.pkl"
+    val_path = "./prepare_data/1112_0023_val.pkl"
+    val_text_path = "./prepare_data/1112_0023_val_text_data.pkl"
+    test_path = "./prepare_data/1112_0023_test.pkl"
+    test_ds_path = "./prepare_data/1112_0024_test_text_data.pkl"
+
+    train = pickle.load(open(train_path,"rb"))
+    train_count = train.shape[0]
+    train_text = pickle.load(open(train_text_path,"rb"))
+    val = pickle.load(open(val_path,"rb"))
+    val_count = val.shape[0]
+    val_text = pickle.load(open(val_text_path,"rb"))
+    test = pickle.load(open(test_path,"rb"))
+    test_text = pickle.load(open(test_ds_path, "rb"))
+    train_ds = prepare.create_ds(train,train_text)
+    val_ds = prepare.create_ds(val,val_text)
 
     train_ds = train_ds.shuffle(buffer_size=train_count).repeat(-1)
     train_ds = train_ds.batch(BATCH_SIZE)
@@ -61,13 +63,13 @@ if __name__ == "__main__":
         "cnn_kernel_sizes": [3, 4, 5],
         "cnn_filters_num": 256,
         "dense1_units": 128,
-        "label_count": [6, 2, 6]
+        "label_count": [6, 1, 6]
     }
     adam_opt = Adam()
     model = Att_1_TextCNN(**params_for_model).get_model(embedding_martix)
     model.compile(optimizer=adam_opt,
                   loss={'out_Age': 'sparse_categorical_crossentropy',
-                        'out_Gender': 'binary_crossentropy',
+                        'out_Gender': "binary_crossentropy",
                         "out_Education": "sparse_categorical_crossentropy"},
                   metrics=['acc']
                   )
