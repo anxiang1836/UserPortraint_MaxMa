@@ -136,7 +136,7 @@ class PrepareData(object):
 
                 for n_gram in [1, 2]:
                     for i in range(len(word_list) - n_gram + 1):
-                        tokens += ['_*_'.join(word_list[i:i + n_gram])]
+                        tokens.append('_*_'.join(word_list[i:i + n_gram]))
             return tokens
 
 

@@ -8,7 +8,6 @@ import time
 from gensim.models import Word2Vec
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.preprocessing import sequence
-from tensorflow.data import Dataset
 
 
 class Prepare:
@@ -54,16 +53,17 @@ class Prepare:
 
         self._word2idx = word2idx
         # -- 持久化Embedding层的参数 --
-        self.__dump_obj(embedding_matrix, "embedding_matrix")
-        self.__dump_obj(word2idx, "word2idx")
-
+        # self.__dump_obj(embedding_matrix, "embedding_matrix")
+        # self.__dump_obj(word2idx, "word2idx")
+        print("Embedding_matrix初始化完毕！Word2idx初始化完毕！")
         return embedding_matrix
 
-    def split_dataset(self):
+    def split_dataset(self, label):
         """
         划分数据集：取0.1作为测试集，0.72作为训练集，0.18作为验证集。
-        其中，验证集分别按照Age，Gender，Education的分布，划分了三个不同的训练集、验证集，就算是做3套不同的参数，后面的模型增强用的吧！
+        其中，验证集分别按照Age，Gender，Education的分布，可划分了三个不同的训练集、验证集
 
+        :params label : 这个是按照哪个数据的分布对数据进行划分
         :return:
             train_ds_set、val_ds_set是分别包含3套不同的DataSet的,分别是：By_Age,By_Gender,By_Education;
             test_ds是1个DataSet。
@@ -73,36 +73,33 @@ class Prepare:
         X_ID_train, X_ID_test, y_train, _ = train_test_split(data['ID'], data['Age'],
                                                              stratify=data['Age'], test_size=0.1)
 
-        # -- 分别按照Age、Gender、Education的分布去划分训练集和验证集，有3套不同的<训练+验证数据>
-        train_ds_set = []
-        val_ds_set = []
-        for label in ['Age', 'Gender', 'Education']:
-            # 切分验证集
-            X_data = data.loc[data['ID'].isin(X_ID_train), :]
-            X_ID_train, X_ID_val, _, _ = train_test_split(X_ID_train, X_data[label],
-                                                          stratify=y_train, test_size=0.2)
+        # 切分验证集
+        X_data = data.loc[data['ID'].isin(X_ID_train), :]
+        X_ID_train, X_ID_val, _, _ = train_test_split(X_ID_train, X_data[label],
+                                                      stratify=X_data[label], test_size=0.2)
 
-            # 构建数据管道
-            train = data.loc[data['ID'].isin(X_ID_train), :]
-            train_count = train.shape[0]
-            val = data.loc[data['ID'].isin(X_ID_val), :]
-            val_count = val.shape[0]
-
-            train_ds = self.__create_ds(train)
-            val_ds = self.__create_ds(val)
-
-            train_ds_set.append(train_ds)
-            val_ds_set.append(val_ds)
-
+        # 构建数据管道
+        train = data.loc[data['ID'].isin(X_ID_train), :]
+        train_count = train.shape[0]
+        val = data.loc[data['ID'].isin(X_ID_val), :]
+        val_count = val.shape[0]
         test = data.loc[data['ID'].isin(X_ID_test), :]
         test_count = test.shape[0]
-        test_ds = self.__create_ds(test)
 
-        self.__dump_obj(train_ds_set, 'train_ds_set')
-        self.__dump_obj(val_ds_set, 'val_ds_set')
-        self.__dump_obj(test_ds, 'test_ds')
+        data_dic = {"train": train, "val": val, "test": test}
+        ds_set = []
 
-        return train_ds_set, val_ds_set, test_ds,train_count,val_count,test_count
+        for k in data_dic.keys():
+            print("开始创建{}分布划分的{}数据集".format(label, k))
+            csv_data = data_dic[k]
+            text_data = self.__transfer(data_dic[k]["Query_list"])
+            ds = self.create_ds(csv_data, text_data)
+            ds_set.append(ds)
+            # 持久化
+            self.__dump_obj(csv_data, k)
+            self.__dump_obj(text_data, "{}_text_data".format(k))
+
+        return ds_set, train_count, val_count, test_count
 
     def __dump_obj(self, obj, name):
         """
@@ -116,23 +113,6 @@ class Prepare:
         pickle.dump(obj, open(self.output_path + timestamp + '_' + name + '.pkl', 'wb'))
         return
 
-    def __create_ds(self, data):
-        """
-        根据完整的数据表，创建tf的数据管道（为切分后的数据）
-
-        :param data: 包含多列的DataFrame
-        :return:
-            ds :  tensorflow的DataSet，算是一种数据流，很好用哦，官方推荐的数据渠道
-        """
-        text_data = self.__transfer(data['Query_list'])
-        text_ds = Dataset.from_tensor_slices(text_data)
-        label_ds = Dataset.from_tensor_slices(
-            (data['Age'] - 1,
-             data['Gender'] - 1,
-             data['Education'] - 1))
-        ds = tf.data.Dataset.zip((text_ds, label_ds))
-        return ds
-
     def __transfer(self, query_list):
         """
         用于转化原始数据，根据w2v的词表，转化为idx矩阵
@@ -144,13 +124,15 @@ class Prepare:
 
         # -- 将训练数据转为对应的index + padding矩阵 --
         train_data = []
-        for line in query_list:
+        for i, line in enumerate(query_list):
             filter_r = r"[\s+\d+\.\!\/_,$%^*():：+\"\']+|[+——！，。？、~@#￥%……&*（）-]+|[“”\[\];?《》’【】■]+"
             line = re.sub(filter_r, '', line)
 
             word_list = jieba.lcut(line)
             word_list = [word for word in word_list if (word is not '\t') & (re.match(r'\s', word) is None)]
             word_list = word_list[:self.max_len]
+            if i % 10000 == 0:
+                print("第{}条query分词结果的前15个词{}：".format(i, word_list[:15]))
 
             line_indexs = []
 
@@ -162,7 +144,7 @@ class Prepare:
                 line_indexs.append(idx)
 
             line_indexs = np.array(line_indexs).reshape(1, len(line_indexs))
-            line_indexs = sequence.pad_sequences(line_indexs, max_len=self.max_len)
+            line_indexs = sequence.pad_sequences(line_indexs, maxlen=self.max_len)
 
             train_data.append(line_indexs)
 
@@ -170,3 +152,21 @@ class Prepare:
         train_data = train_data.reshape((train_data.shape[0], train_data.shape[1], train_data.shape[-1]))
 
         return train_data
+
+    @staticmethod
+    def create_ds(df, text_data):
+        """
+        根据完整的数据表，创建tf的数据管道（为切分后的数据）
+
+        :param data: 包含多列的DataFrame
+        :return:
+            ds :  tensorflow的DataSet，算是一种数据流，很好用哦，官方推荐的数据渠道
+        """
+        # text_data = self.__transfer(data['Query_list'])
+        text_ds = tf.data.Dataset.from_tensor_slices(text_data)
+        label_ds = tf.data.Dataset.from_tensor_slices(
+            (df['Age'] - 1,
+             df['Gender'] - 1,
+             df['Education'] - 1))
+        ds = tf.data.Dataset.zip((text_ds, label_ds))
+        return ds

@@ -16,29 +16,35 @@ if __name__ == "__main__":
 
     BATCH_SIZE = 128
 
-    params_for_prepare = {"data_path": "",
-                          "w2vpath": "",
-                          "output_path": "",
-                          "max_len": "",
-                          "word2idx": word2idx}
+    params_for_prepare = {
+        "data_path": "./data/new_train_20191110.csv",
+        "w2vpath": "./word2vec_trained/baike_26g_news_13g_novel_229g.model",
+        "output_path": "./prepare_data/",
+        "max_len": 650,
+        "word2idx": word2idx}
 
     prepare = Prepare(**params_for_prepare)
     embedding_martix = prepare.create_embedding_matrix()
 
-    embedding_martix_path = ""
-    # embedding_martix = pickle.load(open(embedding_martix_path,"rb"))
+    ds_set, train_count, val_count, test_count = prepare.split_dataset("Age")
+    train_ds = ds_set[0]
+    val_ds = ds_set[1]
 
-    train_ds_set, val_ds_set, test_ds, train_count, val_count, test_count = prepare.split_dataset()
-    # train_ds_set_path = ""
-    # val_ds_set_path = ""
+    # train_path = ""
+    # train_text_path = ""
+    # val_path = ""
+    # val_text_path = ""
+    # test_path = ""
     # test_ds_path = ""
     #
-    # train_ds_set = pickle.load(open(train_ds_set_path,"rb"))
-    # val_ds_set = pickle.load(open(val_ds_set_path,"rb"))
-    # test_ds = pickle.load(open(test_ds_path, "rb"))
-
-    train_ds = train_ds_set[0]
-    val_ds = train_ds_set[0]
+    # train = pickle.load(open(train_path,"rb"))
+    # train_text = pickle.load(open(train_text_path,"rb"))
+    # val = pickle.load(open(val_path,"rb"))
+    # val_text = pickle.load(open(val_text_path,"rb"))
+    # test = pickle.load(open(test_path,"rb"))
+    # test_text = pickle.load(open(test_ds_path, "rb"))
+    # train_ds = prepare.create_ds(train,train_text)
+    # val_ds = prepare.create_ds(val,val_text)
 
     train_ds = train_ds.shuffle(buffer_size=train_count).repeat(-1)
     train_ds = train_ds.batch(BATCH_SIZE)
@@ -49,7 +55,7 @@ if __name__ == "__main__":
     # --- 2.编译模型 ---
     EPOCHS = 50
     params_for_model = {
-        "max_len": 280,
+        "max_len": 650,
         "vocab_count": embedding_martix.shape[0],
         "embedding_dims": 128,
         "cnn_kernel_sizes": [3, 4, 5],
