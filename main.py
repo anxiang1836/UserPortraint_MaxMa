@@ -26,31 +26,39 @@ if __name__ == "__main__":
     prepare = Prepare(**params_for_prepare)
     embedding_martix = prepare.create_embedding_matrix()
 
+    # --- 创建数据管道，并做数据的持久化 ---
     # ds_set, train_count, val_count, test_count = prepare.split_dataset("Age")
     # train_ds = ds_set[0]
     # val_ds = ds_set[1]
 
-    train_path = "./prepare_data/1112_0021_train.pkl"
-    train_text_path = "./prepare_data/1112_0021_train_text_data.pkl"
-    val_path = "./prepare_data/1112_0023_val.pkl"
-    val_text_path = "./prepare_data/1112_0023_val_text_data.pkl"
-    test_path = "./prepare_data/1112_0023_test.pkl"
-    test_ds_path = "./prepare_data/1112_0024_test_text_data.pkl"
+    # --- 使用持久化的数据来创建数据管道 ---
+    train_path = "./prepare_data/1112_0133_train.pkl"
+    train_text_path = "./prepare_data/1112_0133_train_text_data.pkl"
+    val_path = "./prepare_data/1112_0135_val.pkl"
+    val_text_path = "./prepare_data/1112_0135_val_text_data.pkl"
+    test_path = "./prepare_data/1112_0136_test.pkl"
+    test_ds_path = "./prepare_data/1112_0136_test_text_data.pkl"
 
-    train = pickle.load(open(train_path,"rb"))
+    train = pickle.load(open(train_path, "rb"))
     train_count = train.shape[0]
-    train_text = pickle.load(open(train_text_path,"rb"))
-    val = pickle.load(open(val_path,"rb"))
+    train_text = pickle.load(open(train_text_path, "rb"))
+
+    val = pickle.load(open(val_path, "rb"))
     val_count = val.shape[0]
-    val_text = pickle.load(open(val_text_path,"rb"))
-    test = pickle.load(open(test_path,"rb"))
-    test_text = pickle.load(open(test_ds_path, "rb"))
-    train_ds = prepare.create_ds(train,train_text)
-    val_ds = prepare.create_ds(val,val_text)
+    val_text = pickle.load(open(val_text_path, "rb"))
+
+    # test = pickle.load(open(test_path,"rb"))
+    # test_text = pickle.load(open(test_ds_path, "rb"))
+
+    train_ds = prepare.create_ds(train, train_text)
+    val_ds = prepare.create_ds(val, val_text)
+
+    del train_path, train_text_path, train, train_text
+    del val_path, val_text_path, val, val_text
 
     train_ds = train_ds.shuffle(buffer_size=train_count).repeat(-1)
     train_ds = train_ds.batch(BATCH_SIZE)
-
+    val_ds = val_ds.batch(BATCH_SIZE)
     train_steps = train_count // BATCH_SIZE
     val_steps = val_count // BATCH_SIZE
 

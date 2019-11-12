@@ -92,7 +92,7 @@ class Prepare:
         for k in data_dic.keys():
             print("开始创建{}分布划分的{}数据集".format(label, k))
             csv_data = data_dic[k]
-            text_data = self.__transfer(data_dic[k]["Query_list"])
+            text_data = self.__transfer(csv_data["Query_list"])
             ds = self.create_ds(csv_data, text_data)
             ds_set.append(ds)
             # 持久化
